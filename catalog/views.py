@@ -1,6 +1,8 @@
-from django.shortcuts import render
-from django.urls import reverse_lazy
+from django.shortcuts import render, get_object_or_404, redirect
+from django.urls import reverse_lazy, reverse
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
+
+from pytils.translit import slugify
 
 from catalog.models import Product
 
@@ -31,6 +33,13 @@ class ProductCreateView(CreateView):
     fields = ('name', 'description', 'image', 'category', 'price')
     success_url = reverse_lazy('product_list')
 
+    def form_valid(self, form):
+        if form.is_valid():
+            new_product = form.save()
+            new_product.slug = slugify(new_product.name)
+            new_product.save()
+        return super().form_valid(form)
+
 
 class ProductUpdateView(UpdateView):
     """Класс для обновления товара"""
@@ -39,7 +48,16 @@ class ProductUpdateView(UpdateView):
     success_url = reverse_lazy('product_list')
 
     def get_success_url(self):
-        return reverse_lazy('product_detail', args=[self.object.pk])
+        """Перенаправляет на страницу с обновленным товаром"""
+        return reverse('product_detail', args=[self.object.pk])
+
+    def form_valid(self, form):
+        """Переопределяем метод для обновления slug"""
+        if form.is_valid():
+            new_product = form.save()
+            new_product.slug = slugify(new_product.name)
+            new_product.save()
+        return super().form_valid(form)
 
 
 class ProductDeleteView(DeleteView):
@@ -81,3 +99,14 @@ def contacts(request):
             file.write(f'Ваше сообщение: {name}, {phone}, {message}')
 
     return render(request, 'catalog/contacts.html')
+
+
+def toggle_active(request, pk):
+    """Переключает активность товара"""
+    product_item = get_object_or_404(Product, pk=pk)
+    if product_item.is_active:
+        product_item.is_active = False
+    else:
+        product_item.is_active = True
+    product_item.save()
+    return redirect('product_list')

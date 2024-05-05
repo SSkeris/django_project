@@ -28,6 +28,8 @@ class Product(models.Model):
     created_at = models.DateTimeField(default=timezone.now, verbose_name='Дата создания')
     updated_at = models.DateTimeField(default=timezone.now, verbose_name='Дата изменения')
     viewed = models.IntegerField(default=0, verbose_name='Количество просмотров')
+    is_active = models.BooleanField(default=True, verbose_name='Активен')
+    slug = models.SlugField(**NULLABLE, max_length=150, unique=True, verbose_name="slug")
 
     def __str__(self):
         return f'{self.name}, цена - {self.price}'
