@@ -14,6 +14,11 @@ class ProductListView(ListView):
     """Класс для отображения списка товаров"""
     model = Product
 
+    def get_queryset(self, *args, **kwargs):
+        queryset = super().get_queryset().order_by(*args, **kwargs)
+        queryset = queryset.filter(is_active=True)
+        return queryset
+
 
 class ProductDetailView(DetailView):
     """Класс для отображения детальной информации о товаре"""
