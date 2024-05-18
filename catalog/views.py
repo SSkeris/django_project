@@ -1,10 +1,12 @@
+from django.forms import inlineformset_factory
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse_lazy, reverse
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 
 from pytils.translit import slugify
 
-from catalog.models import Product
+from catalog.forms import ProductForm, VersionForm
+from catalog.models import Product, Version
 
 
 # контроллеры для сайта
@@ -15,6 +17,7 @@ class ProductListView(ListView):
     model = Product
 
     def get_queryset(self, *args, **kwargs):
+        """Фильтрует товары по статусу is_active"""
         queryset = super().get_queryset().order_by(*args, **kwargs)
         queryset = queryset.filter(is_active=True)
         return queryset
@@ -25,7 +28,20 @@ class ProductDetailView(DetailView):
     model = Product
 
     def get_object(self, queryset=None):
-        """Переопределяем метод для получения количества просмотров"""
+        """
+        Переопределяем метод для получения количества просмотров.
+
+        Получает объект Product по первичному ключу, увеличивает счетчик просмотров на 1,
+        сохраняет изменения и возвращает объект.
+
+        Parameters:
+        queryset (QuerySet, optional):
+        Набор объектов, из которого получается объект. По умолчанию None, что означает использование
+        стандартного набора объектов модели.
+
+        Returns:
+        object: Объект Product с увеличенным счетчиком просмотров.
+        """
         self.object = super().get_object(queryset)
         self.object.viewed += 1
         self.object.save()
@@ -35,7 +51,7 @@ class ProductDetailView(DetailView):
 class ProductCreateView(CreateView):
     """Класс для создания нового товара"""
     model = Product
-    fields = ('name', 'description', 'image', 'category', 'price')
+    form_class = ProductForm
     success_url = reverse_lazy('product_list')
 
     def form_valid(self, form):
@@ -49,20 +65,57 @@ class ProductCreateView(CreateView):
 class ProductUpdateView(UpdateView):
     """Класс для обновления товара"""
     model = Product
-    fields = ('name', 'description', 'image', 'category', 'price')
+    form_class = ProductForm
     success_url = reverse_lazy('product_list')
 
     def get_success_url(self):
         """Перенаправляет на страницу с обновленным товаром"""
         return reverse('product_detail', args=[self.object.pk])
 
+    def get_context_data(self, **kwargs):
+        """
+        Этот метод используется для предоставления контекстных данных для ProductUpdateView и включает
+        форму для управления связанными объектами Version.
+        Параметры:
+        kwargs (словарь): дополнительные ключевые аргументы, передаваемые методу.
+        Возвращает:
+        dict: словарь, содержащий контекстные данные для шаблона.
+        Контекстные данные включают форму для управления связанными объектами Version.
+        Если метод запроса POST, форма заполняется данными из запроса. Если метод запроса не POST,
+        форма заполняется данными из текущего объекта Product.
+        """
+        context_data = super().get_context_data(**kwargs)
+        VersionFormSet = inlineformset_factory(Product, Version, form=VersionForm, extra=1)
+        if self.request.method == 'POST':
+            context_data['formset'] = VersionFormSet(self.request.POST, instance=self.object)
+        else:
+            context_data['formset'] = VersionFormSet(instance=self.object)
+        return context_data
+
     def form_valid(self, form):
-        """Переопределяем метод для обновления slug"""
-        if form.is_valid():
-            new_product = form.save()
-            new_product.slug = slugify(new_product.name)
-            new_product.save()
-        return super().form_valid(form)
+        """
+        Этот метод вызывается, когда форма и набор форм действительны. Он сохраняет данные формы и набора форм, а затем перенаправляет на успешный URL.
+        Параметры:
+        form (Form): объект формы, содержащий проверенные данные.
+        formset (InlineFormSet): объект набора форм, содержащий проверенные данные.
+        Возвращает:
+        HttpResponseRedirect: перенаправление на успешный URL.
+        """
+        context_data = self.get_context_data()
+        formset = context_data['formset']
+        if form.is_valid() and formset.is_valid():
+            self.object = form.save()
+            formset.instance = self.object
+            formset.save()
+            return super().form_valid(form)
+        else:
+            return self.render_to_response(self.get_context_data(form=form, formset=formset))
+        # """Переопределяем метод для обновления slug"""
+        # if form.is_valid():
+        #     new_product = form.save()
+        #     new_product.slug = slugify(new_product.name)
+        #     new_product.save()
+        # return super().form_valid(form)
 
 
 class ProductDeleteView(DeleteView):
