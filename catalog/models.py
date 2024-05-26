@@ -1,6 +1,8 @@
 from django.db import models
 from django.utils import timezone
 
+from users.models import User
+
 NULLABLE = {'null': True, 'blank': True}
 
 
@@ -30,6 +32,9 @@ class Product(models.Model):
     viewed = models.IntegerField(default=0, verbose_name='Количество просмотров')
     is_active = models.BooleanField(default=True, verbose_name='Активен')
     slug = models.SlugField(**NULLABLE, max_length=150, unique=True, verbose_name="slug")
+
+    owner = models.ForeignKey(User, verbose_name='Владелец', help_text='укажите владельца продукта', **NULLABLE,
+                              on_delete=models.SET_NULL)
 
     def __str__(self):
         return f'{self.name}, цена - {self.price}'

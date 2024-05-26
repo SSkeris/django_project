@@ -24,6 +24,7 @@
                     <a href="{% url 'product_detail' product.pk %}" type="button"
                        class="btn btn-lg btn-block btn-outline-primary">Подробно</a>
                 </div>
+                {% if user.is_authenticated %}
                 <div class="btn-group">
                     <a href="{% url 'product_update' product.pk %}" type="button"
                        class="btn btn-lg btn-block btn-outline-primary">Изменить</a>
@@ -31,6 +32,7 @@
                        class="btn btn-lg btn-block btn-outline-primary">Удалить</a>
                 </div>
                 <a href="{% url 'toggle_active' product.pk %}" class="btn btn-outline-danger">Деактивировать</a>
+                {% endif %}
             </div>
         </div>
     </div>

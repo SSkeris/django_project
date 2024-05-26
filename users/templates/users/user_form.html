@@ -1,0 +1,33 @@
+{% extends 'catalog/base.html' %}
+{% block content_product_list %}
+<div class="container">
+    <form class="row" method="POST" enctype="multipart/form-data">
+        <div class="col-lg-6 col-md-6 col-sm-12">
+            <div class="card mb-4 box-shadow">
+                <div class="card-header">
+                    <h3>
+                        {% if object %}
+                        Редактирование профиля
+                        {% else %}
+                        Создание пользователя
+                        {% endif %}
+                    </h3>
+                </div>
+                <div class="card-body">
+                    {% csrf_token %}
+                    {{ form.as_p }}
+                    <div class="col">
+                        <button type="submit" class="btn btn-lg btn-block btn-outline-primary">
+                            {% if object %}
+                            Сохранить
+                            {% else %}
+                            Зарегистрировать
+                            {% endif %}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
