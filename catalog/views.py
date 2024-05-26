@@ -1,3 +1,4 @@
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.forms import inlineformset_factory
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse_lazy, reverse
@@ -48,21 +49,32 @@ class ProductDetailView(DetailView):
         return self.object
 
 
-class ProductCreateView(CreateView):
+class ProductCreateView(LoginRequiredMixin, CreateView):
     """Класс для создания нового товара"""
     model = Product
     form_class = ProductForm
     success_url = reverse_lazy('product_list')
 
     def form_valid(self, form):
-        if form.is_valid():
-            new_product = form.save()
-            new_product.slug = slugify(new_product.name)
-            new_product.save()
-        return super().form_valid(form)
+        """Переопределяем метод для привязки к пользователю"""
+        if form.is_valid:
+            new_object = form.save(commit=False)
+            new_object.owner = self.request.user
+            new_object.save()
+            return super().form_valid(form)
+        else:
+            return self.render_to_response(self.get_context_data(form=form))
+
+    # def form_valid(self, form):
+    #     """Переопределяем метод для добавления slug"""
+    #     if form.is_valid():
+    #         new_product = form.save()
+    #         new_product.slug = slugify(new_product.name)
+    #         new_product.save()
+    #     return super().form_valid(form)
 
 
-class ProductUpdateView(UpdateView):
+class ProductUpdateView(LoginRequiredMixin, UpdateView):
     """Класс для обновления товара"""
     model = Product
     form_class = ProductForm
@@ -118,7 +130,7 @@ class ProductUpdateView(UpdateView):
         # return super().form_valid(form)
 
 
-class ProductDeleteView(DeleteView):
+class ProductDeleteView(LoginRequiredMixin, DeleteView):
     """Класс для удаления товара"""
     model = Product
     success_url = reverse_lazy('product_list')
