@@ -42,8 +42,16 @@ class ProductForm(StyleFormMixin, ModelForm):
         return clean_description
 
 
+class ProductModeratorForm(StyleFormMixin, ModelForm):
+    """Форма для редактирования модератором"""
+    class Meta:
+        model = Product
+        fields = ('category', 'description', 'is_active')
+
+
 class VersionForm(StyleFormMixin, ModelForm):
     """Форма для создания версии товара"""
+
     class Meta:
         model = Version
         fields = '__all__'

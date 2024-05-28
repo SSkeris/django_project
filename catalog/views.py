@@ -1,4 +1,6 @@
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.exceptions import PermissionDenied
 from django.forms import inlineformset_factory
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse_lazy, reverse
@@ -6,14 +8,14 @@ from django.views.generic import ListView, DetailView, CreateView, UpdateView, D
 
 from pytils.translit import slugify
 
-from catalog.forms import ProductForm, VersionForm
+from catalog.forms import ProductForm, VersionForm, ProductModeratorForm
 from catalog.models import Product, Version
 
 
 # контроллеры для сайта
 
 
-class ProductListView(ListView):
+class ProductListView(LoginRequiredMixin, ListView):
     """Класс для отображения списка товаров"""
     model = Product
 
@@ -24,7 +26,7 @@ class ProductListView(ListView):
         return queryset
 
 
-class ProductDetailView(DetailView):
+class ProductDetailView(LoginRequiredMixin, DetailView):
     """Класс для отображения детальной информации о товаре"""
     model = Product
 
@@ -80,6 +82,13 @@ class ProductUpdateView(LoginRequiredMixin, UpdateView):
     form_class = ProductForm
     success_url = reverse_lazy('product_list')
 
+    def get_object(self, queryset=None):
+        """Доступ к редактированию только у владельца"""
+        self.object = super().get_object(queryset)
+        if self.request.user == self.object.owner:
+            return self.object
+        raise PermissionDenied
+
     def get_success_url(self):
         """Перенаправляет на страницу с обновленным товаром"""
         return reverse('product_detail', args=[self.object.pk])
@@ -129,6 +138,15 @@ class ProductUpdateView(LoginRequiredMixin, UpdateView):
         #     new_product.save()
         # return super().form_valid(form)
 
+    def get_form_class(self):
+        user = self.request.user
+        if user == self.object.owner:
+            return ProductForm
+        if (user.has_perm('catalog.can_edit_category') and user.has_perm('catalog.can_edit_description') and
+                user.has_perm('catalog.can_edit_is_active')):
+            return ProductModeratorForm
+        raise PermissionDenied
+
 
 class ProductDeleteView(LoginRequiredMixin, DeleteView):
     """Класс для удаления товара"""
@@ -158,6 +176,7 @@ class ProductDeleteView(LoginRequiredMixin, DeleteView):
 #     return render(request, 'catalog/product_detail.html', context)
 
 
+@login_required
 def contacts(request):
     """Принимает контактные данные от пользователя с сайта"""
     if request.method == 'POST':
@@ -171,6 +190,7 @@ def contacts(request):
     return render(request, 'catalog/contacts.html')
 
 
+@login_required
 def toggle_active(request, pk):
     """Переключает активность товара"""
     product_item = get_object_or_404(Product, pk=pk)
