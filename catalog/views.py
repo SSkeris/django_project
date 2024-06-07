@@ -9,7 +9,8 @@ from django.views.generic import ListView, DetailView, CreateView, UpdateView, D
 from pytils.translit import slugify
 
 from catalog.forms import ProductForm, VersionForm, ProductModeratorForm
-from catalog.models import Product, Version
+from catalog.models import Product, Version, Category
+from catalog.services import get_categories_from_cache
 
 
 # контроллеры для сайта
@@ -200,3 +201,18 @@ def toggle_active(request, pk):
         product_item.is_active = True
     product_item.save()
     return redirect('product_list')
+
+
+class CategoryListView(LoginRequiredMixin, ListView):
+    """Класс для вывода списка категорий"""
+    model = Category
+    template_name = "catalog/categories_list.html"
+
+    def get_context_data(self, **kwargs):
+        context_data = super().get_context_data(**kwargs)
+        categories = Category.objects.all()
+        context_data['categories_list'] = categories
+        return context_data
+    #
+    def get_queryset(self):
+        return get_categories_from_cache()
